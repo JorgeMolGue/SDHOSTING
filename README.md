@@ -6,8 +6,11 @@ Este sistema permitirá levantar servicios de hosting automáticamente, optimiza
 
 # Objetivos
  Automatizar la contratación y provisión de hosting y dominios.
+
  Integrar herramientas de gestión como HestiaCP, WHMCS y Terraform.
+
  Mejorar la eficiencia operativa mediante la automatización del flujo de aprovisionamiento (N8N).
+
  Ofrecer a los usuarios acceso inmediato a sus servicios de hosting tras la contratación Enviando por correo credendiales.
 
 # Conclusión
