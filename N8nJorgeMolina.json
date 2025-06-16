@@ -1,0 +1,342 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whmcs-provision",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -640,
+        -260
+      ],
+      "id": "ea35926b-a2bb-4a5e-adb9-ef5bd03d2c9b",
+      "name": "Webhook",
+      "webhookId": "ca85b6c0-d00a-45ca-9aa1-fb30750c185c"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1) Recuperamos el body completo\nconst p = items[0].json.body;\n\n// 2) Validamos el hookToken\nif (p.hookToken !== 'd4F6gH8jK2LmN3pQ5rS7tU9vW0xY1zA2') {\n  throw new Error('Token inválido');\n}\n\n// 3) Devolvemos solo lo que nos interesa\nreturn [{\n  json: {\n    serviceId:    p.serviceId,\n    clientId:     p.clientId,\n    productId:    p.productId,\n    clientEmail:  p.clientEmail,\n    ipAddress:    p.ipAddress,\n    rootPassword: p.rootPassword,\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -460,
+        -260
+      ],
+      "id": "e14060dd-0143-4116-ae73-4764d57721f3",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "command": "=cd /workspace && \\\nterraform init -input=false && \\\nterraform apply -auto-approve \\\n  -var=\"service_id={{ $json.serviceId }}\" \\\n  -var=\"client_id={{ $json.clientId }}\" \\\n  -var=\"product_id={{ $json.productId }}\"\n"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        -220,
+        -260
+      ],
+      "id": "fd452c83-b466-47cf-84a9-16832bc214e3",
+      "name": "Execute Command"
+    },
+    {
+      "parameters": {
+        "command": "cd /workspace\nterraform output -json\n\n"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        40,
+        -260
+      ],
+      "id": "4d212a66-d6db-47b8-a058-def900fd14cf",
+      "name": "Execute Command1",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://whmcs.sdhosting.dev/includes/api.php",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "action",
+              "value": "ModuleCreate"
+            },
+            {
+              "name": "responsetype",
+              "value": "json"
+            },
+            {
+              "name": "identifier",
+              "value": "v7s84k6yu7Yuwdfyrzh7FQgH1rdfmPDq"
+            },
+            {
+              "name": "secret",
+              "value": "f4wq45r05EhuZZ8jLNupdOCexqcwCmk4"
+            },
+            {
+              "name": "serviceid",
+              "value": "={{$json.serviceId}}"
+            },
+            {
+              "name": "clientid",
+              "value": "={{$json.clientId}}"
+            },
+            {
+              "name": "productid",
+              "value": "={{$json.productId}}"
+            },
+            {
+              "name": "clientemail",
+              "value": "={{$json.clientEmail}}"
+            },
+            {
+              "name": "ipaddress\t",
+              "value": "={{$json.ipAddress}}"
+            },
+            {
+              "name": "rootpassword\t",
+              "value": "={{$json.rootPassword}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        -40
+      ],
+      "id": "1db68cf9-52f1-4a0d-be75-819baaaef7a1",
+      "name": "HTTP Request",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1) Parseamos el stdout\nconst out = JSON.parse(items[0].json.stdout);\n\n// 2) Recuperamos también el serviceId, clientId y clientEmail\nconst { serviceId, clientId, clientEmail } = items[0].json;\n\n// 3) Devolvemos un JSON limpio para la llamada final\nreturn [{\n  json: {\n    serviceId,\n    clientId,\n    clientEmail,\n    ipAddress:    out.ip_address.value,\n    rootPassword: out.root_password.value,\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        -260
+      ],
+      "id": "0d516898-98da-4282-8572-58582c35f41a",
+      "name": "Code1"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [
+        80,
+        100
+      ],
+      "id": "613583ff-e70f-46f4-9dac-b29b6e63f971",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Código para Code2 (n8n)\n// Modo: Run Once for All Items\nreturn items.map(item => {\n  // 1) Extraemos los valores de IP y rootPassword del JSON de entrada\n  const ip   = item.json.ipAddress    || \"\";\n  const pass = item.json.rootPassword || \"\";\n\n  // 2) Construimos en JS un objeto con las claves que queremos serializar\n  //    Este objeto corresponderá al array PHP: [\"ip_address\" => ip, \"root_password\" => pass]\n  const datos = {\n    ip_address:   ip,\n    root_password: pass\n  };\n\n  // 3) Serializamos a formato PHP:\n  //    a:<número_de_elementos>:{s:<longitud_clave>:\"clave\";s:<longitud_valor>:\"valor\"; ... }\n  let serialized = `a:${Object.keys(datos).length}:{`;\n  for (const [key, val] of Object.entries(datos)) {\n    // Buffer.byteLength(..., 'utf8') calcula la longitud en bytes (UTF-8) de la cadena\n    serialized += `s:${Buffer.byteLength(key, 'utf8')}:\\\"${key}\\\";`;\n    serialized += `s:${Buffer.byteLength(val, 'utf8')}:\\\"${val}\\\";`;\n  }\n  serialized += `}`;\n\n  // 4) Codificamos esa cadena serializada a Base64\n  const encoded = Buffer.from(serialized, 'utf8').toString('base64');\n\n  // 5) Guardamos la cadena Base64 en item.json.customvars\n  //    (será el valor que luego enviaremos en el HTTP Request)\n  item.json.customvars = encoded;\n\n  // 6) Devolvemos el item modificado\n  return item;\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        360,
+        200
+      ],
+      "id": "45817a88-4da1-4d28-922a-c03e2dea1f4a",
+      "name": "Code2"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://whmcs.sdhosting.dev/includes/api.php",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "identifier",
+              "value": "v7sBk4K6yu7Yuwdfyrzh7FQgHTrdfmPDq"
+            },
+            {
+              "name": "secret",
+              "value": "f4wq45r05EhuZZ8jLNupdOCexqcwCmk4"
+            },
+            {
+              "name": "action",
+              "value": "SendEmail"
+            },
+            {
+              "name": "responsetype",
+              "value": "json"
+            },
+            {
+              "name": "messagename",
+              "value": "Welcome VPS"
+            },
+            {
+              "name": "id",
+              "value": "={{$json[\"serviceId\"]}}"
+            },
+            {
+              "name": "customvars[service_ip]",
+              "value": "={{$json[\"ipAddress\"]}}"
+            },
+            {
+              "name": "customvars[root_password]",
+              "value": "={{$json[\"rootPassword\"]}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1460,
+        -320
+      ],
+      "id": "061f29c6-8eac-4352-9032-108a486e646f",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "fromEmail": "soporte@whmcs.sdhosting.dev",
+        "toEmail": "={{$json[\"clientEmail\"]}}",
+        "subject": "Bienvenido a tu VPS – Datos de acceso",
+        "html": "=<p>Hola {{$json[\"clientEmail\"]}},</p>\n<p>Tu VPS ya está listo. Estos son los datos de acceso:</p>\n<ul>\n  <li><strong>IP del servidor:</strong> {{$json[\"ipAddress\"]}}</li>\n  <li><strong>Usuario root:</strong> root</li>\n  <li><strong>Contraseña root:</strong> {{$json[\"rootPassword\"]}}</li>\n</ul>\n<p>Si tienes dudas, responde a este correo.</p>\n<p>Saludos,<br>El equipo de Soporte</p>\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        640,
+        220
+      ],
+      "id": "bdfd763e-48e3-4a6d-bd7f-934cd6941f13",
+      "name": "Send Email",
+      "webhookId": "f7578399-9d80-4cba-8989-68f072ad92ff",
+      "credentials": {
+        "smtp": {
+          "id": "BDiB3b8DCBaeCcXR",
+          "name": "SMTP account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Execute Command",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Command": {
+      "main": [
+        [
+          {
+            "node": "Execute Command1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Command1": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Code2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code2": {
+      "main": [
+        [
+          {
+            "node": "Send Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "6f95a5a9-42c7-4e19-b45c-e8a178587aaa",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5d281be5343e36648b864420abd9d7e68a6305e5a7cc04976e93df07b026462d"
+  },
+  "id": "r1jeIGaNi6oNB1gB",
+  "tags": []
+}
